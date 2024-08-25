@@ -1,155 +1,185 @@
-# YAML <a href="https://www.npmjs.com/package/yaml"><img align="right" src="https://badge.fury.io/js/yaml.svg" title="npm package" /></a>
+# ts-interface-checker
 
-`yaml` is a definitive library for [YAML](https://yaml.org/), the human friendly data serialization standard.
-This library:
+[![Build Status](https://travis-ci.org/gristlabs/ts-interface-checker.svg?branch=master)](https://travis-ci.org/gristlabs/ts-interface-checker)
+[![npm version](https://badge.fury.io/js/ts-interface-checker.svg)](https://badge.fury.io/js/ts-interface-checker)
 
-- Supports both YAML 1.1 and YAML 1.2 and all common data schemas,
-- Passes all of the [yaml-test-suite](https://github.com/yaml/yaml-test-suite) tests,
-- Can accept any string as input without throwing, parsing as much YAML out of it as it can, and
-- Supports parsing, modifying, and writing YAML comments and blank lines.
 
-The library is released under the ISC open source license, and the code is [available on GitHub](https://github.com/eemeli/yaml/).
-It has no external dependencies and runs on Node.js as well as modern browsers.
+> Runtime library to validate data against TypeScript interfaces.
 
-For the purposes of versioning, any changes that break any of the documented endpoints or APIs will be considered semver-major breaking changes.
-Undocumented library internals may change between minor versions, and previous APIs may be deprecated (but not removed).
+This package is the runtime support for validators created by
+[ts-interface-builder](https://github.com/gristlabs/ts-interface-builder).
+It allows validating data, such as parsed JSON objects received
+over the network, or parsed JSON or YAML files, to check if they satisfy a
+TypeScript interface, and to produce informative error messages if they do not.
 
-The minimum supported TypeScript version of the included typings is 3.9;
-for use in earlier versions you may need to set `skipLibCheck: true` in your config.
-This requirement may be updated between minor versions of the library.
+## Installation
 
-For more information, see the project's documentation site: [**eemeli.org/yaml**](https://eemeli.org/yaml/)
-
-To install:
-
-```sh
-npm install yaml
+```bash
+npm install --save-dev ts-interface-builder
+npm install --save ts-interface-checker
 ```
 
-**Note:** These docs are for `yaml@2`. For v1, see the [v1.10.0 tag](https://github.com/eemeli/yaml/tree/v1.10.0) for the source and [eemeli.org/yaml/v1](https://eemeli.org/yaml/v1/) for the documentation.
+## Usage
 
-The development and maintenance of this library is [sponsored](https://github.com/sponsors/eemeli) by:
-
-<a href="https://www.scipress.io/">
-<img width=150 src="https://eemeli.org/yaml/images/scipress.svg" alt="Scipress" />
-</a>
-
-## API Overview
-
-The API provided by `yaml` has three layers, depending on how deep you need to go: [Parse & Stringify](https://eemeli.org/yaml/#parse-amp-stringify), [Documents](https://eemeli.org/yaml/#documents), and the underlying [Lexer/Parser/Composer](https://eemeli.org/yaml/#parsing-yaml).
-The first has the simplest API and "just works", the second gets you all the bells and whistles supported by the library along with a decent [AST](https://eemeli.org/yaml/#content-nodes), and the third lets you get progressively closer to YAML source, if that's your thing.
-
-A [command-line tool](https://eemeli.org/yaml/#command-line-tool) is also included.
-
-```js
-import { parse, stringify } from 'yaml'
-// or
-import YAML from 'yaml'
-// or
-const YAML = require('yaml')
+Suppose you have a TypeScript file defining an interface:
+```typescript
+// foo.ts
+interface Square {
+  size: number;
+  color?: string;
+}
 ```
 
-### Parse & Stringify
-
-- [`parse(str, reviver?, options?): value`](https://eemeli.org/yaml/#yaml-parse)
-- [`stringify(value, replacer?, options?): string`](https://eemeli.org/yaml/#yaml-stringify)
-
-### Documents
-
-- [`Document`](https://eemeli.org/yaml/#documents)
-  - [`constructor(value, replacer?, options?)`](https://eemeli.org/yaml/#creating-documents)
-  - [`#anchors`](https://eemeli.org/yaml/#working-with-anchors)
-  - [`#contents`](https://eemeli.org/yaml/#content-nodes)
-  - [`#directives`](https://eemeli.org/yaml/#stream-directives)
-  - [`#errors`](https://eemeli.org/yaml/#errors)
-  - [`#warnings`](https://eemeli.org/yaml/#errors)
-- [`isDocument(foo): boolean`](https://eemeli.org/yaml/#identifying-node-types)
-- [`parseAllDocuments(str, options?): Document[]`](https://eemeli.org/yaml/#parsing-documents)
-- [`parseDocument(str, options?): Document`](https://eemeli.org/yaml/#parsing-documents)
-
-### Content Nodes
-
-- [`isAlias(foo): boolean`](https://eemeli.org/yaml/#identifying-node-types)
-- [`isCollection(foo): boolean`](https://eemeli.org/yaml/#identifying-node-types)
-- [`isMap(foo): boolean`](https://eemeli.org/yaml/#identifying-node-types)
-- [`isNode(foo): boolean`](https://eemeli.org/yaml/#identifying-node-types)
-- [`isPair(foo): boolean`](https://eemeli.org/yaml/#identifying-node-types)
-- [`isScalar(foo): boolean`](https://eemeli.org/yaml/#identifying-node-types)
-- [`isSeq(foo): boolean`](https://eemeli.org/yaml/#identifying-node-types)
-- [`new Scalar(value)`](https://eemeli.org/yaml/#scalar-values)
-- [`new YAMLMap()`](https://eemeli.org/yaml/#collections)
-- [`new YAMLSeq()`](https://eemeli.org/yaml/#collections)
-- [`doc.createAlias(node, name?): Alias`](https://eemeli.org/yaml/#working-with-anchors)
-- [`doc.createNode(value, options?): Node`](https://eemeli.org/yaml/#creating-nodes)
-- [`doc.createPair(key, value): Pair`](https://eemeli.org/yaml/#creating-nodes)
-- [`visit(node, visitor)`](https://eemeli.org/yaml/#finding-and-modifying-nodes)
-
-### Parsing YAML
-
-- [`new Lexer().lex(src)`](https://eemeli.org/yaml/#lexer)
-- [`new Parser(onNewLine?).parse(src)`](https://eemeli.org/yaml/#parser)
-- [`new Composer(options?).compose(tokens)`](https://eemeli.org/yaml/#composer)
-
-## YAML.parse
-
-```yaml
-# file.yml
-YAML:
-  - A human-readable data serialization language
-  - https://en.wikipedia.org/wiki/YAML
-yaml:
-  - A complete JavaScript implementation
-  - https://www.npmjs.com/package/yaml
+The first step is to generate some code for runtime checks:
+```bash
+`npm bin`/ts-interface-builder foo.ts
 ```
 
-```js
-import fs from 'fs'
-import YAML from 'yaml'
+It produces a file like this:
+```typescript
+// foo-ti.js
+import * as t from "ts-interface-checker";
 
-YAML.parse('3.14159')
-// 3.14159
-
-YAML.parse('[ true, false, maybe, null ]\n')
-// [ true, false, 'maybe', null ]
-
-const file = fs.readFileSync('./file.yml', 'utf8')
-YAML.parse(file)
-// { YAML:
-//   [ 'A human-readable data serialization language',
-//     'https://en.wikipedia.org/wiki/YAML' ],
-//   yaml:
-//   [ 'A complete JavaScript implementation',
-//     'https://www.npmjs.com/package/yaml' ] }
+export const Square = t.iface([], {
+  "size": "number",
+  "color": t.opt("string"),
+});
+...
 ```
 
-## YAML.stringify
+Now at runtime, to check if a value satisfies the Square interface:
+```typescript
+import fooTI from "./foo-ti";
+import {createCheckers} from "ts-interface-checker";
 
-```js
-import YAML from 'yaml'
+const {Square} = createCheckers(fooTI);
 
-YAML.stringify(3.14159)
-// '3.14159\n'
-
-YAML.stringify([true, false, 'maybe', null])
-// `- true
-// - false
-// - maybe
-// - null
-// `
-
-YAML.stringify({ number: 3, plain: 'string', block: 'two\nlines\n' })
-// `number: 3
-// plain: string
-// block: |
-//   two
-//   lines
-// `
+Square.check({size: 1});                  // OK
+Square.check({size: 1, color: "green"});  // OK
+Square.check({color: "green"});           // Fails with "value.size is missing"
+Square.check({size: 4, color: 5});        // Fails with "value.color is not a string"
 ```
 
----
+Note that `ts-interface-builder` is only needed for the build-time step, and
+`ts-interface-checker` is needed at runtime. That's why the recommendation is to npm-install the
+former using `--save-dev` flag and the latter using `--save`.
 
-Browser testing provided by:
+## Checking method calls
 
-<a href="https://www.browserstack.com/open-source">
-<img width=200 src="https://eemeli.org/yaml/images/browserstack.svg" alt="BrowserStack" />
-</a>
+If you have an interface with methods, you can validate method call arguments and return values:
+```typescript
+// greet.ts
+interface Greeter {
+  greet(name: string): string;
+}
+```
+
+After generating the runtime code, you can now check calls like:
+```typescript
+import greetTI from "./greet-ti";
+import {createCheckers} from "ts-interface-checker";
+
+const {Greeter} = createCheckers(greetTI);
+
+Greeter.methodArgs("greet").check(["Bob"]);     // OK
+Greeter.methodArgs("greet").check([17]);        // Fails with "value.name is not a string"
+Greeter.methodArgs("greet").check([]);          // Fails with "value.name is missing"
+
+Greeter.methodResult("greet").check("hello");   // OK
+Greeter.methodResult("greet").check(null);      // Fails with "value is not a string"
+```
+
+## Type suites
+
+If one type refers to a type defined in another file, you need to tell the interface checker about
+all type names when you call `createCheckers()`. E.g. given
+
+```typescript
+// color.ts
+export type Color = RGB | string;
+export type RGB = [number, number, number];
+```
+
+```typescript
+// shape.ts
+import {Color} from "./color";
+export interface Square {
+  size: number;
+  color?: Color;
+}
+```
+
+the produced files `color-ti.ts` and `shape-ti.ts` do not automatically refer to each other, but
+expect you to relate them in `createCheckers()` call:
+```typescript
+import color from "./color-ti";
+import shape from "./shape-ti";
+import {createCheckers} from "ts-interface-checker";
+
+const {Square} = createCheckers(shape, color);    // Pass in all required type suites.
+
+Square.check({size: 1, color: [255,255,255]});
+```
+
+## Strict checking
+
+You may check that data contains no extra properties. Note that it is not generally recommended as
+it this prevents backward compatibility: if you add new properties to an interface, then older
+code with strict checks will not accept them.
+
+Following on the example above:
+```typescript
+Square.strictCheck({size: 1, color: [255,255,255], bg: "blue"});    // Fails with value.bg is extraneous
+Square.strictCheck({size: 1, color: [255,255,255,0.5]});            // Fails with ...value.color[3] is extraneous
+```
+
+## Type guards
+
+Standard `Checker` objects do the type checking logic, but are unable to make the TypeScript
+compiler aware that an object of `unknown` type implements a certain interface.
+
+Basic code:
+```typescript
+const unk: unknown = {size: 1, color: "green"};
+// Type is unknown, so TypeScript will not let you access the members.
+console.log(unk.size); // Error: "Object is of type 'unknown'"
+```
+
+With a `Checker` available:
+```typescript
+import fooTI from "./foo-ti";
+import {createCheckers} from "ts-interface-checker";
+
+const {Square} = createCheckers(fooTI);
+
+const unk: unknown = {size: 1, color: "green"};
+
+if (Square.test(unk)) {
+  // unk does implement Square, but TypeScript is not aware of it.
+  console.log(unk.size); // Error: "Object is of type 'unknown'"
+}
+```
+
+To enable type guard functionality on the existing `test`, and `strictTest` functions, `Checker`
+objects should be cast to `CheckerT<>` using the appropriate type.
+
+Using `CheckerT<>`:
+```typescript
+import {Square} from "./foo";
+import fooTI from "./foo-ti";
+import {createCheckers, CheckerT} from "ts-interface-checker";
+
+const {Square} = createCheckers(fooTI) as {Square: CheckerT<Square>};
+
+const unk: unknown = {size: 1, color: "green"};
+
+if (Square.test(unk)) {
+  // TypeScript is now aware that unk implements Square, and allows member access.
+  console.log(unk.size);
+}
+```
+
+## Type assertions
+
+`CheckerT<>` will eventually support type assertions using the `check` and `strictCheck` functions,
+however, this feature is not yet fully working in TypeScript.

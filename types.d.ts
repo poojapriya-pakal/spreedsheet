@@ -1,90 +1,181 @@
-import type { CreateNodeContext } from '../doc/createNode.js';
-import type { Node } from '../nodes/Node.js';
-import type { Scalar } from '../nodes/Scalar.js';
-import type { YAMLMap } from '../nodes/YAMLMap.js';
-import type { YAMLSeq } from '../nodes/YAMLSeq.js';
-import type { ParseOptions } from '../options.js';
-import type { StringifyContext } from '../stringify/stringify.js';
-import type { Schema } from './Schema.js';
-interface TagBase {
-    /**
-     * An optional factory function, used e.g. by collections when wrapping JS objects as AST nodes.
-     */
-    createNode?: (schema: Schema, value: unknown, ctx: CreateNodeContext) => Node;
-    /**
-     * If `true`, together with `test` allows for values to be stringified without
-     * an explicit tag. For most cases, it's unlikely that you'll actually want to
-     * use this, even if you first think you do.
-     */
-    default?: boolean;
-    /**
-     * If a tag has multiple forms that should be parsed and/or stringified
-     * differently, use `format` to identify them.
-     */
-    format?: string;
-    /**
-     * Used by `YAML.createNode` to detect your data type, e.g. using `typeof` or
-     * `instanceof`.
-     */
-    identify?: (value: unknown) => boolean;
-    /**
-     * The identifier for your data type, with which its stringified form will be
-     * prefixed. Should either be a !-prefixed local `!tag`, or a fully qualified
-     * `tag:domain,date:foo`.
-     */
-    tag: string;
+/**
+ * This module defines nodes used to define types and validations for objects and interfaces.
+ */
+import { IContext } from "./util";
+export declare type CheckerFunc = (value: any, ctx: IContext) => boolean;
+/** Node that represents a type. */
+export declare abstract class TType {
+    abstract getChecker(suite: ITypeSuite, strict: boolean, allowedProps?: Set<string>): CheckerFunc;
 }
-export interface ScalarTag extends TagBase {
-    collection?: never;
-    nodeClass?: never;
-    /**
-     * Turns a value into an AST node.
-     * If returning a non-`Node` value, the output will be wrapped as a `Scalar`.
-     */
-    resolve(value: string, onError: (message: string) => void, options: ParseOptions): unknown;
-    /**
-     * Optional function stringifying a Scalar node. If your data includes a
-     * suitable `.toString()` method, you can probably leave this undefined and
-     * use the default stringifier.
-     *
-     * @param item The node being stringified.
-     * @param ctx Contains the stringifying context variables.
-     * @param onComment Callback to signal that the stringifier includes the
-     *   item's comment in its output.
-     * @param onChompKeep Callback to signal that the output uses a block scalar
-     *   type with the `+` chomping indicator.
-     */
-    stringify?: (item: Scalar, ctx: StringifyContext, onComment?: () => void, onChompKeep?: () => void) => string;
-    /**
-     * Together with `default` allows for values to be stringified without an
-     * explicit tag and detected using a regular expression. For most cases, it's
-     * unlikely that you'll actually want to use these, even if you first think
-     * you do.
-     */
-    test?: RegExp;
+/**
+ * Descriptor from which TType may be build (by parseSpec()). A plain string is equivalent to
+ * name(string).
+ */
+export declare type TypeSpec = TType | string;
+/**
+ * Represents a suite of named types. Suites are used to resolve type names.
+ */
+export interface ITypeSuite {
+    [name: string]: TType;
 }
-export interface CollectionTag extends TagBase {
-    stringify?: never;
-    test?: never;
-    /** The source collection type supported by this tag. */
-    collection: 'map' | 'seq';
-    /**
-     * The `Node` child class that implements this tag.
-     * If set, used to select this tag when stringifying.
-     *
-     * If the class provides a static `from` method, then that
-     * will be used if the tag object doesn't have a `createNode` method.
-     */
-    nodeClass?: {
-        new (schema?: Schema): Node;
-        from?: (schema: Schema, obj: unknown, ctx: CreateNodeContext) => Node;
+/**
+ * Defines a type name, either built-in, or defined in this suite. It can typically be included in
+ * the specs as just a plain string.
+ */
+export declare function name(value: string): TName;
+export declare class TName extends TType {
+    name: string;
+    private _failMsg;
+    constructor(name: string);
+    getChecker(suite: ITypeSuite, strict: boolean, allowedProps?: Set<string>): CheckerFunc;
+}
+/**
+ * Defines a literal value, e.g. lit('hello') or lit(123).
+ */
+export declare function lit(value: any): TLiteral;
+export declare class TLiteral extends TType {
+    value: any;
+    name: string;
+    private _failMsg;
+    constructor(value: any);
+    getChecker(suite: ITypeSuite, strict: boolean): CheckerFunc;
+}
+/**
+ * Defines an array type, e.g. array('number').
+ */
+export declare function array(typeSpec: TypeSpec): TArray;
+export declare class TArray extends TType {
+    ttype: TType;
+    constructor(ttype: TType);
+    getChecker(suite: ITypeSuite, strict: boolean): CheckerFunc;
+}
+/**
+ * Defines a tuple type, e.g. tuple('string', 'number').
+ */
+export declare function tuple(...typeSpec: TypeSpec[]): TTuple;
+export declare class TTuple extends TType {
+    ttypes: TType[];
+    constructor(ttypes: TType[]);
+    getChecker(suite: ITypeSuite, strict: boolean): CheckerFunc;
+}
+/**
+ * Defines a union type, e.g. union('number', 'null').
+ */
+export declare function union(...typeSpec: TypeSpec[]): TUnion;
+export declare class TUnion extends TType {
+    ttypes: TType[];
+    private _failMsg;
+    constructor(ttypes: TType[]);
+    getChecker(suite: ITypeSuite, strict: boolean): CheckerFunc;
+}
+/**
+ * Defines an intersection type, e.g. intersection('number', 'null').
+ */
+export declare function intersection(...typeSpec: TypeSpec[]): TIntersection;
+export declare class TIntersection extends TType {
+    ttypes: TType[];
+    constructor(ttypes: TType[]);
+    getChecker(suite: ITypeSuite, strict: boolean): CheckerFunc;
+}
+/**
+ * Defines an enum type, e.g. enum({'A': 1, 'B': 2}).
+ */
+export declare function enumtype(values: {
+    [name: string]: string | number;
+}): TEnumType;
+export declare class TEnumType extends TType {
+    members: {
+        [name: string]: string | number;
     };
-    /**
-     * Turns a value into an AST node.
-     * If returning a non-`Node` value, the output will be wrapped as a `Scalar`.
-     *
-     * Note: this is required if nodeClass is not provided.
-     */
-    resolve?: (value: YAMLMap.Parsed | YAMLSeq.Parsed, onError: (message: string) => void, options: ParseOptions) => unknown;
+    readonly validValues: Set<string | number>;
+    private _failMsg;
+    constructor(members: {
+        [name: string]: string | number;
+    });
+    getChecker(suite: ITypeSuite, strict: boolean): CheckerFunc;
 }
-export {};
+/**
+ * Defines a literal enum value, such as Direction.Up, specified as enumlit("Direction", "Up").
+ */
+export declare function enumlit(name: string, prop: string): TEnumLiteral;
+export declare class TEnumLiteral extends TType {
+    enumName: string;
+    prop: string;
+    private _failMsg;
+    constructor(enumName: string, prop: string);
+    getChecker(suite: ITypeSuite, strict: boolean): CheckerFunc;
+}
+/**
+ * Defines an interface. The first argument is an array of interfaces that it extends, and the
+ * second is an array of properties.
+ */
+export declare function iface(bases: string[], props: {
+    [name: string]: TOptional | TypeSpec;
+}): TIface;
+export declare class TIface extends TType {
+    bases: string[];
+    props: TProp[];
+    private propSet;
+    constructor(bases: string[], props: TProp[]);
+    getChecker(suite: ITypeSuite, strict: boolean, allowedProps?: Set<string>): CheckerFunc;
+}
+/**
+ * Defines an optional property on an interface.
+ */
+export declare function opt(typeSpec: TypeSpec): TOptional;
+export declare class TOptional extends TType {
+    ttype: TType;
+    constructor(ttype: TType);
+    getChecker(suite: ITypeSuite, strict: boolean): CheckerFunc;
+}
+/**
+ * Defines a property in an interface.
+ */
+export declare class TProp {
+    name: string;
+    ttype: TType;
+    isOpt: boolean;
+    constructor(name: string, ttype: TType, isOpt: boolean);
+}
+/**
+ * Defines a function. The first argument declares the function's return type, the rest declare
+ * its parameters.
+ */
+export declare function func(resultSpec: TypeSpec, ...params: TParam[]): TFunc;
+export declare class TFunc extends TType {
+    paramList: TParamList;
+    result: TType;
+    constructor(paramList: TParamList, result: TType);
+    getChecker(suite: ITypeSuite, strict: boolean): CheckerFunc;
+}
+/**
+ * Defines a function parameter.
+ */
+export declare function param(name: string, typeSpec: TypeSpec, isOpt?: boolean): TParam;
+export declare class TParam {
+    name: string;
+    ttype: TType;
+    isOpt: boolean;
+    constructor(name: string, ttype: TType, isOpt: boolean);
+}
+/**
+ * Defines a function parameter list.
+ */
+export declare class TParamList extends TType {
+    params: TParam[];
+    constructor(params: TParam[]);
+    getChecker(suite: ITypeSuite, strict: boolean): CheckerFunc;
+}
+/**
+ * Single TType implementation for all basic built-in types.
+ */
+export declare class BasicType extends TType {
+    validator: (value: any) => boolean;
+    private message;
+    constructor(validator: (value: any) => boolean, message: string);
+    getChecker(suite: ITypeSuite, strict: boolean): CheckerFunc;
+}
+/**
+ * Defines the suite of basic types.
+ */
+export declare const basicTypes: ITypeSuite;
