@@ -1,173 +1,72 @@
-# ansi-styles
+# ansi-regex
 
-> [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code#Colors_and_Styles) for styling strings in the terminal
-
-You probably want the higher-level [chalk](https://github.com/chalk/chalk) module for styling your strings.
-
-![](screenshot.png)
+> Regular expression for matching [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code)
 
 ## Install
 
-```sh
-npm install ansi-styles
+```
+$ npm install ansi-regex
 ```
 
 ## Usage
 
 ```js
-import styles from 'ansi-styles';
+import ansiRegex from 'ansi-regex';
 
-console.log(`${styles.green.open}Hello world!${styles.green.close}`);
+ansiRegex().test('\u001B[4mcake\u001B[0m');
+//=> true
 
+ansiRegex().test('cake');
+//=> false
 
-// Color conversion between 256/truecolor
-// NOTE: When converting from truecolor to 256 colors, the original color
-//       may be degraded to fit the new color palette. This means terminals
-//       that do not support 16 million colors will best-match the
-//       original color.
-console.log(`${styles.color.ansi(styles.rgbToAnsi(199, 20, 250))}Hello World${styles.color.close}`)
-console.log(`${styles.color.ansi256(styles.rgbToAnsi256(199, 20, 250))}Hello World${styles.color.close}`)
-console.log(`${styles.color.ansi16m(...styles.hexToRgb('#abcdef'))}Hello World${styles.color.close}`)
+'\u001B[4mcake\u001B[0m'.match(ansiRegex());
+//=> ['\u001B[4m', '\u001B[0m']
+
+'\u001B[4mcake\u001B[0m'.match(ansiRegex({onlyFirst: true}));
+//=> ['\u001B[4m']
+
+'\u001B]8;;https://github.com\u0007click\u001B]8;;\u0007'.match(ansiRegex());
+//=> ['\u001B]8;;https://github.com\u0007', '\u001B]8;;\u0007']
 ```
 
 ## API
 
-### `open` and `close`
+### ansiRegex(options?)
 
-Each style has an `open` and `close` property.
+Returns a regex for matching ANSI escape codes.
 
-### `modifierNames`, `foregroundColorNames`, `backgroundColorNames`, and `colorNames`
+#### options
 
-All supported style strings are exposed as an array of strings for convenience. `colorNames` is the combination of `foregroundColorNames` and `backgroundColorNames`.
+Type: `object`
 
-This can be useful if you need to validate input:
+##### onlyFirst
 
-```js
-import {modifierNames, foregroundColorNames} from 'ansi-styles';
+Type: `boolean`\
+Default: `false` *(Matches any ANSI escape codes in a string)*
 
-console.log(modifierNames.includes('bold'));
-//=> true
+Match only the first ANSI escape.
 
-console.log(foregroundColorNames.includes('pink'));
-//=> false
-```
+## FAQ
 
-## Styles
+### Why do you test for codes not in the ECMA 48 standard?
 
-### Modifiers
+Some of the codes we run as a test are codes that we acquired finding various lists of non-standard or manufacturer specific codes. We test for both standard and non-standard codes, as most of them follow the same or similar format and can be safely matched in strings without the risk of removing actual string content. There are a few non-standard control codes that do not follow the traditional format (i.e. they end in numbers) thus forcing us to exclude them from the test because we cannot reliably match them.
 
-- `reset`
-- `bold`
-- `dim`
-- `italic` *(Not widely supported)*
-- `underline`
-- `overline` *Supported on VTE-based terminals, the GNOME terminal, mintty, and Git Bash.*
-- `inverse`
-- `hidden`
-- `strikethrough` *(Not widely supported)*
-
-### Colors
-
-- `black`
-- `red`
-- `green`
-- `yellow`
-- `blue`
-- `magenta`
-- `cyan`
-- `white`
-- `blackBright` (alias: `gray`, `grey`)
-- `redBright`
-- `greenBright`
-- `yellowBright`
-- `blueBright`
-- `magentaBright`
-- `cyanBright`
-- `whiteBright`
-
-### Background colors
-
-- `bgBlack`
-- `bgRed`
-- `bgGreen`
-- `bgYellow`
-- `bgBlue`
-- `bgMagenta`
-- `bgCyan`
-- `bgWhite`
-- `bgBlackBright` (alias: `bgGray`, `bgGrey`)
-- `bgRedBright`
-- `bgGreenBright`
-- `bgYellowBright`
-- `bgBlueBright`
-- `bgMagentaBright`
-- `bgCyanBright`
-- `bgWhiteBright`
-
-## Advanced usage
-
-By default, you get a map of styles, but the styles are also available as groups. They are non-enumerable so they don't show up unless you access them explicitly. This makes it easier to expose only a subset in a higher-level module.
-
-- `styles.modifier`
-- `styles.color`
-- `styles.bgColor`
-
-###### Example
-
-```js
-import styles from 'ansi-styles';
-
-console.log(styles.color.green.open);
-```
-
-Raw escape codes (i.e. without the CSI escape prefix `\u001B[` and render mode postfix `m`) are available under `styles.codes`, which returns a `Map` with the open codes as keys and close codes as values.
-
-###### Example
-
-```js
-import styles from 'ansi-styles';
-
-console.log(styles.codes.get(36));
-//=> 39
-```
-
-## 16 / 256 / 16 million (TrueColor) support
-
-`ansi-styles` allows converting between various color formats and ANSI escapes, with support for 16, 256 and [16 million colors](https://gist.github.com/XVilka/8346728).
-
-The following color spaces are supported:
-
-- `rgb`
-- `hex`
-- `ansi256`
-- `ansi`
-
-To use these, call the associated conversion function with the intended output, for example:
-
-```js
-import styles from 'ansi-styles';
-
-styles.color.ansi(styles.rgbToAnsi(100, 200, 15)); // RGB to 16 color ansi foreground code
-styles.bgColor.ansi(styles.hexToAnsi('#C0FFEE')); // HEX to 16 color ansi foreground code
-
-styles.color.ansi256(styles.rgbToAnsi256(100, 200, 15)); // RGB to 256 color ansi foreground code
-styles.bgColor.ansi256(styles.hexToAnsi256('#C0FFEE')); // HEX to 256 color ansi foreground code
-
-styles.color.ansi16m(100, 200, 15); // RGB to 16 million color foreground code
-styles.bgColor.ansi16m(...styles.hexToRgb('#C0FFEE')); // Hex (RGB) to 16 million color foreground code
-```
-
-## Related
-
-- [ansi-escapes](https://github.com/sindresorhus/ansi-escapes) - ANSI escape codes for manipulating the terminal
+On the historical side, those ECMA standards were established in the early 90's whereas the VT100, for example, was designed in the mid/late 70's. At that point in time, control codes were still pretty ungoverned and engineers used them for a multitude of things, namely to activate hardware ports that may have been proprietary. Somewhere else you see a similar 'anarchy' of codes is in the x86 architecture for processors; there are a ton of "interrupts" that can mean different things on certain brands of processors, most of which have been phased out.
 
 ## Maintainers
 
 - [Sindre Sorhus](https://github.com/sindresorhus)
 - [Josh Junon](https://github.com/qix-)
 
-## For enterprise
+---
 
-Available as part of the Tidelift Subscription.
-
-The maintainers of `ansi-styles` and thousands of other packages are working with Tidelift to deliver commercial support and maintenance for the open source dependencies you use to build your applications. Save time, reduce risk, and improve code health, while paying the maintainers of the exact dependencies you use. [Learn more.](https://tidelift.com/subscription/pkg/npm-ansi-styles?utm_source=npm-ansi-styles&utm_medium=referral&utm_campaign=enterprise&utm_term=repo)
+<div align="center">
+	<b>
+		<a href="https://tidelift.com/subscription/pkg/npm-ansi-regex?utm_source=npm-ansi-regex&utm_medium=referral&utm_campaign=readme">Get professional support for this package with a Tidelift subscription</a>
+	</b>
+	<br>
+	<sub>
+		Tidelift helps make open source sustainable for maintainers while giving companies<br>assurances about security, maintenance, and licensing for their dependencies.
+	</sub>
+</div>
