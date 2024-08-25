@@ -1,23 +1,17 @@
-declare module 'emoji-regex' {
-    function emojiRegex(): RegExp;
+/**
+Strip [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code) from a string.
 
-    export default emojiRegex;
-}
+@example
+```
+import stripAnsi = require('strip-ansi');
 
-declare module 'emoji-regex/text' {
-    function emojiRegex(): RegExp;
+stripAnsi('\u001B[4mUnicorn\u001B[0m');
+//=> 'Unicorn'
 
-    export default emojiRegex;
-}
+stripAnsi('\u001B]8;;https://github.com\u0007Click\u001B]8;;\u0007');
+//=> 'Click'
+```
+*/
+declare function stripAnsi(string: string): string;
 
-declare module 'emoji-regex/es2015' {
-    function emojiRegex(): RegExp;
-
-    export default emojiRegex;
-}
-
-declare module 'emoji-regex/es2015/text' {
-    function emojiRegex(): RegExp;
-
-    export default emojiRegex;
-}
+export = stripAnsi;
