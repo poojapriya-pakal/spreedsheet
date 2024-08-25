@@ -1,48 +1,50 @@
-import { createStore } from 'zustand/vanilla';
-export * from 'zustand/vanilla';
-import ReactExports from 'react';
-import useSyncExternalStoreExports from 'use-sync-external-store/shim/with-selector.js';
+'use strict';
 
-const { useDebugValue } = ReactExports;
-const { useSyncExternalStoreWithSelector } = useSyncExternalStoreExports;
-let didWarnAboutEqualityFn = false;
-const identity = (arg) => arg;
-function useStore(api, selector = identity, equalityFn) {
-  if (process.env.NODE_ENV !== "production" && equalityFn && !didWarnAboutEqualityFn) {
-    console.warn(
-      "[DEPRECATED] Use `createWithEqualityFn` instead of `create` or use `useStoreWithEqualityFn` instead of `useStore`. They can be imported from 'zustand/traditional'. https://github.com/pmndrs/zustand/discussions/1937"
-    );
-    didWarnAboutEqualityFn = true;
-  }
-  const slice = useSyncExternalStoreWithSelector(
-    api.subscribe,
-    api.getState,
-    api.getServerState || api.getInitialState,
-    selector,
-    equalityFn
-  );
-  useDebugValue(slice);
-  return slice;
-}
-const createImpl = (createState) => {
-  if (process.env.NODE_ENV !== "production" && typeof createState !== "function") {
-    console.warn(
-      "[DEPRECATED] Passing a vanilla store will be unsupported in a future version. Instead use `import { useStore } from 'zustand'`."
-    );
-  }
-  const api = typeof createState === "function" ? createStore(createState) : createState;
-  const useBoundStore = (selector, equalityFn) => useStore(api, selector, equalityFn);
-  Object.assign(useBoundStore, api);
-  return useBoundStore;
-};
-const create = (createState) => createState ? createImpl(createState) : createImpl;
-var react = (createState) => {
-  if (process.env.NODE_ENV !== "production") {
-    console.warn(
-      "[DEPRECATED] Default export is deprecated. Instead use `import { create } from 'zustand'`."
-    );
-  }
-  return create(createState);
-};
+var composer = require('./compose/composer.js');
+var Document = require('./doc/Document.js');
+var Schema = require('./schema/Schema.js');
+var errors = require('./errors.js');
+var Alias = require('./nodes/Alias.js');
+var identity = require('./nodes/identity.js');
+var Pair = require('./nodes/Pair.js');
+var Scalar = require('./nodes/Scalar.js');
+var YAMLMap = require('./nodes/YAMLMap.js');
+var YAMLSeq = require('./nodes/YAMLSeq.js');
+var cst = require('./parse/cst.js');
+var lexer = require('./parse/lexer.js');
+var lineCounter = require('./parse/line-counter.js');
+var parser = require('./parse/parser.js');
+var publicApi = require('./public-api.js');
+var visit = require('./visit.js');
 
-export { create, react as default, useStore };
+
+
+exports.Composer = composer.Composer;
+exports.Document = Document.Document;
+exports.Schema = Schema.Schema;
+exports.YAMLError = errors.YAMLError;
+exports.YAMLParseError = errors.YAMLParseError;
+exports.YAMLWarning = errors.YAMLWarning;
+exports.Alias = Alias.Alias;
+exports.isAlias = identity.isAlias;
+exports.isCollection = identity.isCollection;
+exports.isDocument = identity.isDocument;
+exports.isMap = identity.isMap;
+exports.isNode = identity.isNode;
+exports.isPair = identity.isPair;
+exports.isScalar = identity.isScalar;
+exports.isSeq = identity.isSeq;
+exports.Pair = Pair.Pair;
+exports.Scalar = Scalar.Scalar;
+exports.YAMLMap = YAMLMap.YAMLMap;
+exports.YAMLSeq = YAMLSeq.YAMLSeq;
+exports.CST = cst;
+exports.Lexer = lexer.Lexer;
+exports.LineCounter = lineCounter.LineCounter;
+exports.Parser = parser.Parser;
+exports.parse = publicApi.parse;
+exports.parseAllDocuments = publicApi.parseAllDocuments;
+exports.parseDocument = publicApi.parseDocument;
+exports.stringify = publicApi.stringify;
+exports.visit = visit.visit;
+exports.visitAsync = visit.visitAsync;
