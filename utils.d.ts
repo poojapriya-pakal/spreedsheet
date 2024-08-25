@@ -1,21 +1,9 @@
-import type webpack from 'webpack';
-export declare function isClientComponentEntryModule(mod: {
-    resource: string;
-    buildInfo?: any;
-}): any;
-export declare const regexCSS: RegExp;
-export declare function isCSSMod(mod: {
-    resource: string;
-    type?: string;
-    loaders?: {
-        loader: string;
-    }[];
-}): boolean;
-export declare function getActions(mod: {
-    resource: string;
-    buildInfo?: any;
-}): undefined | string[];
-export declare function generateActionId(filePath: string, exportName: string): string;
-export declare function encodeToBase64<T extends {}>(obj: T): string;
-export declare function decodeFromBase64<T extends {}>(str: string): T;
-export declare function getLoaderModuleNamedExports(resourcePath: string, context: webpack.LoaderContext<any>): Promise<string[]>;
+import type { Compilation, Chunk, ChunkGroup, Module, ModuleGraph } from 'webpack';
+import type { ModuleGraphConnection } from 'webpack';
+export declare function traverseModules(compilation: Compilation, callback: (mod: any, chunk: Chunk, chunkGroup: (typeof compilation.chunkGroups)[0], modId: string | null) => any, filterChunkGroup?: (chunkGroup: ChunkGroup) => boolean): void;
+export declare function forEachEntryModule(compilation: any, callback: ({ name, entryModule }: {
+    name: string;
+    entryModule: any;
+}) => void): void;
+export declare function formatBarrelOptimizedResource(resource: string, matchResource: string): string;
+export declare function getModuleReferencesInOrder(module: Module, moduleGraph: ModuleGraph): ModuleGraphConnection[];

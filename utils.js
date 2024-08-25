@@ -3,14 +3,10 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 0 && (module.exports = {
-    decodeFromBase64: null,
-    encodeToBase64: null,
-    generateActionId: null,
-    getActions: null,
-    getLoaderModuleNamedExports: null,
-    isCSSMod: null,
-    isClientComponentEntryModule: null,
-    regexCSS: null
+    forEachEntryModule: null,
+    formatBarrelOptimizedResource: null,
+    getModuleReferencesInOrder: null,
+    traverseModules: null
 });
 function _export(target, all) {
     for(var name in all)Object.defineProperty(target, name, {
@@ -19,86 +15,83 @@ function _export(target, all) {
     });
 }
 _export(exports, {
-    decodeFromBase64: function() {
-        return decodeFromBase64;
+    forEachEntryModule: function() {
+        return forEachEntryModule;
     },
-    encodeToBase64: function() {
-        return encodeToBase64;
+    formatBarrelOptimizedResource: function() {
+        return formatBarrelOptimizedResource;
     },
-    generateActionId: function() {
-        return generateActionId;
+    getModuleReferencesInOrder: function() {
+        return getModuleReferencesInOrder;
     },
-    getActions: function() {
-        return getActions;
-    },
-    getLoaderModuleNamedExports: function() {
-        return getLoaderModuleNamedExports;
-    },
-    isCSSMod: function() {
-        return isCSSMod;
-    },
-    isClientComponentEntryModule: function() {
-        return isClientComponentEntryModule;
-    },
-    regexCSS: function() {
-        return regexCSS;
+    traverseModules: function() {
+        return traverseModules;
     }
 });
-const _crypto = require("crypto");
-const _constants = require("../../../shared/lib/constants");
-const imageExtensions = [
-    "jpg",
-    "jpeg",
-    "png",
-    "webp",
-    "avif",
-    "ico",
-    "svg"
-];
-const imageRegex = new RegExp(`\\.(${imageExtensions.join("|")})$`);
-function isClientComponentEntryModule(mod) {
-    const rscInfo = mod.buildInfo.rsc;
-    const hasClientDirective = rscInfo == null ? void 0 : rscInfo.isClientRef;
-    const isActionLayerEntry = (rscInfo == null ? void 0 : rscInfo.actions) && (rscInfo == null ? void 0 : rscInfo.type) === _constants.RSC_MODULE_TYPES.client;
-    return hasClientDirective || isActionLayerEntry || imageRegex.test(mod.resource);
-}
-const regexCSS = /\.(css|scss|sass)(\?.*)?$/;
-function isCSSMod(mod) {
-    var _mod_loaders;
-    return !!(mod.type === "css/mini-extract" || mod.resource && regexCSS.test(mod.resource) || ((_mod_loaders = mod.loaders) == null ? void 0 : _mod_loaders.some(({ loader })=>loader.includes("next-style-loader/index.js") || loader.includes("mini-css-extract-plugin/loader.js") || loader.includes("@vanilla-extract/webpack-plugin/loader/"))));
-}
-function getActions(mod) {
-    var _mod_buildInfo_rsc, _mod_buildInfo;
-    return (_mod_buildInfo = mod.buildInfo) == null ? void 0 : (_mod_buildInfo_rsc = _mod_buildInfo.rsc) == null ? void 0 : _mod_buildInfo_rsc.actions;
-}
-function generateActionId(filePath, exportName) {
-    return (0, _crypto.createHash)("sha1").update(filePath + ":" + exportName).digest("hex");
-}
-function encodeToBase64(obj) {
-    return Buffer.from(JSON.stringify(obj)).toString("base64");
-}
-function decodeFromBase64(str) {
-    return JSON.parse(Buffer.from(str, "base64").toString("utf8"));
-}
-async function getLoaderModuleNamedExports(resourcePath, context) {
-    var _mod_dependencies;
-    const mod = await new Promise((res, rej)=>{
-        context.loadModule(resourcePath, (err, _source, _sourceMap, module1)=>{
-            if (err) {
-                return rej(err);
+const _isapprouteroute = require("../../lib/is-app-route-route");
+function traverseModules(compilation, callback, filterChunkGroup) {
+    compilation.chunkGroups.forEach((chunkGroup)=>{
+        if (filterChunkGroup && !filterChunkGroup(chunkGroup)) {
+            return;
+        }
+        chunkGroup.chunks.forEach((chunk)=>{
+            const chunkModules = compilation.chunkGraph.getChunkModulesIterable(chunk);
+            for (const mod of chunkModules){
+                var _compilation_chunkGraph_getModuleId;
+                const modId = (_compilation_chunkGraph_getModuleId = compilation.chunkGraph.getModuleId(mod)) == null ? void 0 : _compilation_chunkGraph_getModuleId.toString();
+                callback(mod, chunk, chunkGroup, modId);
+                const anyModule = mod;
+                if (anyModule.modules) {
+                    for (const subMod of anyModule.modules)callback(subMod, chunk, chunkGroup, modId);
+                }
             }
-            res(module1);
         });
     });
-    const exportNames = ((_mod_dependencies = mod.dependencies) == null ? void 0 : _mod_dependencies.filter((dep)=>{
-        return [
-            "HarmonyExportImportedSpecifierDependency",
-            "HarmonyExportSpecifierDependency"
-        ].includes(dep.constructor.name) && "name" in dep && dep.name !== "default";
-    }).map((dep)=>{
-        return dep.name;
-    })) || [];
-    return exportNames;
+}
+function forEachEntryModule(compilation, callback) {
+    for (const [name, entry] of compilation.entries.entries()){
+        var _entry_dependencies;
+        // Skip for entries under pages/
+        if (name.startsWith("pages/") || // Skip for route.js entries
+        name.startsWith("app/") && (0, _isapprouteroute.isAppRouteRoute)(name)) {
+            continue;
+        }
+        // Check if the page entry is a server component or not.
+        const entryDependency = (_entry_dependencies = entry.dependencies) == null ? void 0 : _entry_dependencies[0];
+        // Ensure only next-app-loader entries are handled.
+        if (!entryDependency || !entryDependency.request) continue;
+        const request = entryDependency.request;
+        if (!request.startsWith("next-edge-ssr-loader?") && !request.startsWith("next-app-loader?")) continue;
+        let entryModule = compilation.moduleGraph.getResolvedModule(entryDependency);
+        if (request.startsWith("next-edge-ssr-loader?")) {
+            entryModule.dependencies.forEach((dependency)=>{
+                const modRequest = dependency.request;
+                if (modRequest == null ? void 0 : modRequest.includes("next-app-loader")) {
+                    entryModule = compilation.moduleGraph.getResolvedModule(dependency);
+                }
+            });
+        }
+        callback({
+            name,
+            entryModule
+        });
+    }
+}
+function formatBarrelOptimizedResource(resource, matchResource) {
+    return `${resource}@${matchResource}`;
+}
+function getModuleReferencesInOrder(module1, moduleGraph) {
+    const connections = [];
+    for (const connection of moduleGraph.getOutgoingConnections(module1)){
+        if (connection.dependency && connection.module) {
+            connections.push({
+                connection,
+                index: moduleGraph.getParentBlockIndex(connection.dependency)
+            });
+        }
+    }
+    connections.sort((a, b)=>a.index - b.index);
+    return connections.map((c)=>c.connection);
 }
 
 //# sourceMappingURL=utils.js.map
