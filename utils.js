@@ -1,198 +1,122 @@
 'use strict';
 
-const {
-  ArrayPrototypeFind,
-  ObjectEntries,
-  ObjectPrototypeHasOwnProperty: ObjectHasOwn,
-  StringPrototypeCharAt,
-  StringPrototypeIncludes,
-  StringPrototypeStartsWith,
-} = require('./internal/primordials');
-
-const {
-  validateObject,
-} = require('./internal/validators');
-
-// These are internal utilities to make the parsing logic easier to read, and
-// add lots of detail for the curious. They are in a separate file to allow
-// unit testing, although that is not essential (this could be rolled into
-// main file and just tested implicitly via API).
-//
-// These routines are for internal use, not for export to client.
+exports.isInteger = num => {
+  if (typeof num === 'number') {
+    return Number.isInteger(num);
+  }
+  if (typeof num === 'string' && num.trim() !== '') {
+    return Number.isInteger(Number(num));
+  }
+  return false;
+};
 
 /**
- * Return the named property, but only if it is an own property.
+ * Find a node of the given type
  */
-function objectGetOwn(obj, prop) {
-  if (ObjectHasOwn(obj, prop))
-    return obj[prop];
-}
+
+exports.find = (node, type) => node.nodes.find(node => node.type === type);
 
 /**
- * Return the named options property, but only if it is an own property.
+ * Find a node of the given type
  */
-function optionsGetOwn(options, longOption, prop) {
-  if (ObjectHasOwn(options, longOption))
-    return objectGetOwn(options[longOption], prop);
-}
+
+exports.exceedsLimit = (min, max, step = 1, limit) => {
+  if (limit === false) return false;
+  if (!exports.isInteger(min) || !exports.isInteger(max)) return false;
+  return ((Number(max) - Number(min)) / Number(step)) >= limit;
+};
 
 /**
- * Determines if the argument may be used as an option value.
- * @example
- * isOptionValue('V') // returns true
- * isOptionValue('-v') // returns true (greedy)
- * isOptionValue('--foo') // returns true (greedy)
- * isOptionValue(undefined) // returns false
+ * Escape the given node with '\\' before node.value
  */
-function isOptionValue(value) {
-  if (value == null) return false;
 
-  // Open Group Utility Conventions are that an option-argument
-  // is the argument after the option, and may start with a dash.
-  return true; // greedy!
-}
+exports.escapeNode = (block, n = 0, type) => {
+  const node = block.nodes[n];
+  if (!node) return;
+
+  if ((type && node.type === type) || node.type === 'open' || node.type === 'close') {
+    if (node.escaped !== true) {
+      node.value = '\\' + node.value;
+      node.escaped = true;
+    }
+  }
+};
 
 /**
- * Detect whether there is possible confusion and user may have omitted
- * the option argument, like `--port --verbose` when `port` of type:string.
- * In strict mode we throw errors if value is option-like.
+ * Returns true if the given brace node should be enclosed in literal braces
  */
-function isOptionLikeValue(value) {
-  if (value == null) return false;
 
-  return value.length > 1 && StringPrototypeCharAt(value, 0) === '-';
-}
+exports.encloseBrace = node => {
+  if (node.type !== 'brace') return false;
+  if ((node.commas >> 0 + node.ranges >> 0) === 0) {
+    node.invalid = true;
+    return true;
+  }
+  return false;
+};
 
 /**
- * Determines if `arg` is just a short option.
- * @example '-f'
+ * Returns true if a brace node is invalid.
  */
-function isLoneShortOption(arg) {
-  return arg.length === 2 &&
-    StringPrototypeCharAt(arg, 0) === '-' &&
-    StringPrototypeCharAt(arg, 1) !== '-';
-}
+
+exports.isInvalidBrace = block => {
+  if (block.type !== 'brace') return false;
+  if (block.invalid === true || block.dollar) return true;
+  if ((block.commas >> 0 + block.ranges >> 0) === 0) {
+    block.invalid = true;
+    return true;
+  }
+  if (block.open !== true || block.close !== true) {
+    block.invalid = true;
+    return true;
+  }
+  return false;
+};
 
 /**
- * Determines if `arg` is a lone long option.
- * @example
- * isLoneLongOption('a') // returns false
- * isLoneLongOption('-a') // returns false
- * isLoneLongOption('--foo') // returns true
- * isLoneLongOption('--foo=bar') // returns false
+ * Returns true if a node is an open or close node
  */
-function isLoneLongOption(arg) {
-  return arg.length > 2 &&
-    StringPrototypeStartsWith(arg, '--') &&
-    !StringPrototypeIncludes(arg, '=', 3);
-}
+
+exports.isOpenOrClose = node => {
+  if (node.type === 'open' || node.type === 'close') {
+    return true;
+  }
+  return node.open === true || node.close === true;
+};
 
 /**
- * Determines if `arg` is a long option and value in the same argument.
- * @example
- * isLongOptionAndValue('--foo') // returns false
- * isLongOptionAndValue('--foo=bar') // returns true
+ * Reduce an array of text nodes.
  */
-function isLongOptionAndValue(arg) {
-  return arg.length > 2 &&
-    StringPrototypeStartsWith(arg, '--') &&
-    StringPrototypeIncludes(arg, '=', 3);
-}
+
+exports.reduce = nodes => nodes.reduce((acc, node) => {
+  if (node.type === 'text') acc.push(node.value);
+  if (node.type === 'range') node.type = 'text';
+  return acc;
+}, []);
 
 /**
- * Determines if `arg` is a short option group.
- *
- * See Guideline 5 of the [Open Group Utility Conventions](https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap12.html).
- *   One or more options without option-arguments, followed by at most one
- *   option that takes an option-argument, should be accepted when grouped
- *   behind one '-' delimiter.
- * @example
- * isShortOptionGroup('-a', {}) // returns false
- * isShortOptionGroup('-ab', {}) // returns true
- * // -fb is an option and a value, not a short option group
- * isShortOptionGroup('-fb', {
- *   options: { f: { type: 'string' } }
- * }) // returns false
- * isShortOptionGroup('-bf', {
- *   options: { f: { type: 'string' } }
- * }) // returns true
- * // -bfb is an edge case, return true and caller sorts it out
- * isShortOptionGroup('-bfb', {
- *   options: { f: { type: 'string' } }
- * }) // returns true
+ * Flatten an array
  */
-function isShortOptionGroup(arg, options) {
-  if (arg.length <= 2) return false;
-  if (StringPrototypeCharAt(arg, 0) !== '-') return false;
-  if (StringPrototypeCharAt(arg, 1) === '-') return false;
 
-  const firstShort = StringPrototypeCharAt(arg, 1);
-  const longOption = findLongOptionForShort(firstShort, options);
-  return optionsGetOwn(options, longOption, 'type') !== 'string';
-}
+exports.flatten = (...args) => {
+  const result = [];
 
-/**
- * Determine if arg is a short string option followed by its value.
- * @example
- * isShortOptionAndValue('-a', {}); // returns false
- * isShortOptionAndValue('-ab', {}); // returns false
- * isShortOptionAndValue('-fFILE', {
- *   options: { foo: { short: 'f', type: 'string' }}
- * }) // returns true
- */
-function isShortOptionAndValue(arg, options) {
-  validateObject(options, 'options');
+  const flat = arr => {
+    for (let i = 0; i < arr.length; i++) {
+      const ele = arr[i];
 
-  if (arg.length <= 2) return false;
-  if (StringPrototypeCharAt(arg, 0) !== '-') return false;
-  if (StringPrototypeCharAt(arg, 1) === '-') return false;
+      if (Array.isArray(ele)) {
+        flat(ele);
+        continue;
+      }
 
-  const shortOption = StringPrototypeCharAt(arg, 1);
-  const longOption = findLongOptionForShort(shortOption, options);
-  return optionsGetOwn(options, longOption, 'type') === 'string';
-}
+      if (ele !== undefined) {
+        result.push(ele);
+      }
+    }
+    return result;
+  };
 
-/**
- * Find the long option associated with a short option. Looks for a configured
- * `short` and returns the short option itself if a long option is not found.
- * @example
- * findLongOptionForShort('a', {}) // returns 'a'
- * findLongOptionForShort('b', {
- *   options: { bar: { short: 'b' } }
- * }) // returns 'bar'
- */
-function findLongOptionForShort(shortOption, options) {
-  validateObject(options, 'options');
-  const longOptionEntry = ArrayPrototypeFind(
-    ObjectEntries(options),
-    ({ 1: optionConfig }) => objectGetOwn(optionConfig, 'short') === shortOption
-  );
-  return longOptionEntry?.[0] ?? shortOption;
-}
-
-/**
- * Check if the given option includes a default value
- * and that option has not been set by the input args.
- *
- * @param {string} longOption - long option name e.g. 'foo'
- * @param {object} optionConfig - the option configuration properties
- * @param {object} values - option values returned in `values` by parseArgs
- */
-function useDefaultValueOption(longOption, optionConfig, values) {
-  return objectGetOwn(optionConfig, 'default') !== undefined &&
-    values[longOption] === undefined;
-}
-
-module.exports = {
-  findLongOptionForShort,
-  isLoneLongOption,
-  isLoneShortOption,
-  isLongOptionAndValue,
-  isOptionValue,
-  isOptionLikeValue,
-  isShortOptionAndValue,
-  isShortOptionGroup,
-  useDefaultValueOption,
-  objectGetOwn,
-  optionsGetOwn,
+  flat(args);
+  return result;
 };
