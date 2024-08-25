@@ -1,196 +1,86 @@
 {
-  "name": "zustand",
-  "description": "🐻 Bear necessities for state management in React",
-  "private": false,
-  "version": "4.5.5",
-  "main": "./index.js",
-  "types": "./index.d.ts",
-  "typesVersions": {
-    "<4.0": {
-      "esm/*": [
-        "ts3.4/*"
-      ],
-      "*": [
-        "ts3.4/*"
-      ]
-    }
-  },
-  "files": [
-    "**"
-  ],
+  "name": "@isaacs/cliui",
+  "version": "8.0.2",
+  "description": "easily create complex multi-column command-line-interfaces",
+  "main": "build/index.cjs",
   "exports": {
-    "./package.json": "./package.json",
-    ".": {
-      "import": {
-        "types": "./esm/index.d.mts",
-        "default": "./esm/index.mjs"
+    ".": [
+      {
+        "import": "./index.mjs",
+        "require": "./build/index.cjs"
       },
-      "module": {
-        "types": "./esm/index.d.ts",
-        "default": "./esm/index.js"
-      },
-      "default": {
-        "types": "./index.d.ts",
-        "default": "./index.js"
-      }
-    },
-    "./vanilla": {
-      "import": {
-        "types": "./esm/vanilla.d.mts",
-        "default": "./esm/vanilla.mjs"
-      },
-      "module": {
-        "types": "./esm/vanilla.d.ts",
-        "default": "./esm/vanilla.js"
-      },
-      "default": {
-        "types": "./vanilla.d.ts",
-        "default": "./vanilla.js"
-      }
-    },
-    "./middleware": {
-      "import": {
-        "types": "./esm/middleware.d.mts",
-        "default": "./esm/middleware.mjs"
-      },
-      "module": {
-        "types": "./esm/middleware.d.ts",
-        "default": "./esm/middleware.js"
-      },
-      "default": {
-        "types": "./middleware.d.ts",
-        "default": "./middleware.js"
-      }
-    },
-    "./middleware/immer": {
-      "import": {
-        "types": "./esm/middleware/immer.d.mts",
-        "default": "./esm/middleware/immer.mjs"
-      },
-      "module": {
-        "types": "./esm/middleware/immer.d.ts",
-        "default": "./esm/middleware/immer.js"
-      },
-      "default": {
-        "types": "./middleware/immer.d.ts",
-        "default": "./middleware/immer.js"
-      }
-    },
-    "./shallow": {
-      "import": {
-        "types": "./esm/shallow.d.mts",
-        "default": "./esm/shallow.mjs"
-      },
-      "module": {
-        "types": "./esm/shallow.d.ts",
-        "default": "./esm/shallow.js"
-      },
-      "default": {
-        "types": "./shallow.d.ts",
-        "default": "./shallow.js"
-      }
-    },
-    "./vanilla/shallow": {
-      "import": {
-        "types": "./esm/vanilla/shallow.d.mts",
-        "default": "./esm/vanilla/shallow.mjs"
-      },
-      "module": {
-        "types": "./esm/vanilla/shallow.d.ts",
-        "default": "./esm/vanilla/shallow.js"
-      },
-      "default": {
-        "types": "./vanilla/shallow.d.ts",
-        "default": "./vanilla/shallow.js"
-      }
-    },
-    "./react/shallow": {
-      "import": {
-        "types": "./esm/react/shallow.d.mts",
-        "default": "./esm/react/shallow.mjs"
-      },
-      "module": {
-        "types": "./esm/react/shallow.d.ts",
-        "default": "./esm/react/shallow.js"
-      },
-      "default": {
-        "types": "./react/shallow.d.ts",
-        "default": "./react/shallow.js"
-      }
-    },
-    "./traditional": {
-      "import": {
-        "types": "./esm/traditional.d.mts",
-        "default": "./esm/traditional.mjs"
-      },
-      "module": {
-        "types": "./esm/traditional.d.ts",
-        "default": "./esm/traditional.js"
-      },
-      "default": {
-        "types": "./traditional.d.ts",
-        "default": "./traditional.js"
-      }
-    },
-    "./context": {
-      "import": {
-        "types": "./esm/context.d.mts",
-        "default": "./esm/context.mjs"
-      },
-      "module": {
-        "types": "./esm/context.d.ts",
-        "default": "./esm/context.js"
-      },
-      "default": {
-        "types": "./context.d.ts",
-        "default": "./context.js"
-      }
-    }
+      "./build/index.cjs"
+    ]
   },
-  "sideEffects": false,
-  "engines": {
-    "node": ">=12.7.0"
+  "type": "module",
+  "module": "./index.mjs",
+  "scripts": {
+    "check": "standardx '**/*.ts' && standardx '**/*.js' && standardx '**/*.cjs'",
+    "fix": "standardx --fix '**/*.ts' && standardx --fix '**/*.js' && standardx --fix '**/*.cjs'",
+    "pretest": "rimraf build && tsc -p tsconfig.test.json && cross-env NODE_ENV=test npm run build:cjs",
+    "test": "c8 mocha ./test/*.cjs",
+    "test:esm": "c8 mocha ./test/**/*.mjs",
+    "postest": "check",
+    "coverage": "c8 report --check-coverage",
+    "precompile": "rimraf build",
+    "compile": "tsc",
+    "postcompile": "npm run build:cjs",
+    "build:cjs": "rollup -c",
+    "prepare": "npm run compile"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/pmndrs/zustand.git"
+  "repository": "yargs/cliui",
+  "standard": {
+    "ignore": [
+      "**/example/**"
+    ],
+    "globals": [
+      "it"
+    ]
   },
   "keywords": [
-    "react",
-    "state",
-    "manager",
-    "management",
-    "redux",
-    "store"
+    "cli",
+    "command-line",
+    "layout",
+    "design",
+    "console",
+    "wrap",
+    "table"
   ],
-  "author": "Paul Henschel",
-  "contributors": [
-    "Jeremy Holcomb (https://github.com/JeremyRH)",
-    "Daishi Kato (https://github.com/dai-shi)"
-  ],
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/pmndrs/zustand/issues"
-  },
-  "homepage": "https://github.com/pmndrs/zustand",
-  "packageManager": "pnpm@8.15.0",
+  "author": "Ben Coe <ben@npmjs.com>",
+  "license": "ISC",
   "dependencies": {
-    "use-sync-external-store": "1.2.2"
+    "string-width": "^5.1.2",
+    "string-width-cjs": "npm:string-width@^4.2.0",
+    "strip-ansi": "^7.0.1",
+    "strip-ansi-cjs": "npm:strip-ansi@^6.0.1",
+    "wrap-ansi": "^8.1.0",
+    "wrap-ansi-cjs": "npm:wrap-ansi@^7.0.0"
   },
-  "peerDependencies": {
-    "@types/react": ">=16.8",
-    "immer": ">=9.0.6",
-    "react": ">=16.8"
+  "devDependencies": {
+    "@types/node": "^14.0.27",
+    "@typescript-eslint/eslint-plugin": "^4.0.0",
+    "@typescript-eslint/parser": "^4.0.0",
+    "c8": "^7.3.0",
+    "chai": "^4.2.0",
+    "chalk": "^4.1.0",
+    "cross-env": "^7.0.2",
+    "eslint": "^7.6.0",
+    "eslint-plugin-import": "^2.22.0",
+    "eslint-plugin-node": "^11.1.0",
+    "gts": "^3.0.0",
+    "mocha": "^10.0.0",
+    "rimraf": "^3.0.2",
+    "rollup": "^2.23.1",
+    "rollup-plugin-ts": "^3.0.2",
+    "standardx": "^7.0.0",
+    "typescript": "^4.0.0"
   },
-  "peerDependenciesMeta": {
-    "@types/react": {
-      "optional": true
-    },
-    "immer": {
-      "optional": true
-    },
-    "react": {
-      "optional": true
-    }
+  "files": [
+    "build",
+    "index.mjs",
+    "!*.d.ts"
+  ],
+  "engines": {
+    "node": ">=12"
   }
 }
