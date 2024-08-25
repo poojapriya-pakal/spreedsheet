@@ -1,18 +1,16 @@
+// The Turbopack HMR client can't be properly omitted at the moment (WEB-1589),
+// so instead we remap its import to this file in webpack builds.
 "use strict";
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-Object.defineProperty(exports, "useRouter", {
+Object.defineProperty(exports, "connect", {
     enumerable: true,
     get: function() {
-        return useRouter;
+        return connect;
     }
 });
-const _react = require("react");
-const _routercontextsharedruntime = require("../../shared/lib/router-context.shared-runtime");
-function useRouter() {
-    return (0, _react.useContext)(_routercontextsharedruntime.RouterContext);
-}
+function connect() {}
 
 if ((typeof exports.default === 'function' || (typeof exports.default === 'object' && exports.default !== null)) && typeof exports.default.__esModule === 'undefined') {
   Object.defineProperty(exports.default, '__esModule', { value: true });
@@ -20,4 +18,4 @@ if ((typeof exports.default === 'function' || (typeof exports.default === 'objec
   module.exports = exports.default;
 }
 
-//# sourceMappingURL=router.js.map
+//# sourceMappingURL=noop-turbopack-hmr.js.map
