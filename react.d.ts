@@ -1,4 +1,4 @@
-import type { Mutate, StateCreator, StoreApi, StoreMutatorIdentifier } from './vanilla';
+import { Mutate, StateCreator, StoreApi, StoreMutatorIdentifier } from './vanilla';
 type ExtractState<S> = S extends {
     getState: () => infer T;
 } ? T : never;
@@ -23,8 +23,18 @@ export type UseBoundStore<S extends WithReact<ReadonlyStoreApi<unknown>>> = {
     <U>(selector: (state: ExtractState<S>) => U, equalityFn: (a: U, b: U) => boolean): U;
 } & S;
 type Create = {
-    <T, Mos extends [StoreMutatorIdentifier, unknown][] = []>(initializer: StateCreator<T, [], Mos>): UseBoundStore<Mutate<StoreApi<T>, Mos>>;
-    <T>(): <Mos extends [StoreMutatorIdentifier, unknown][] = []>(initializer: StateCreator<T, [], Mos>) => UseBoundStore<Mutate<StoreApi<T>, Mos>>;
+    <T, Mos extends [
+        StoreMutatorIdentifier,
+        unknown
+    ][] = [
+    ]>(initializer: StateCreator<T, [
+    ], Mos>): UseBoundStore<Mutate<StoreApi<T>, Mos>>;
+    <T>(): <Mos extends [
+        StoreMutatorIdentifier,
+        unknown
+    ][] = [
+    ]>(initializer: StateCreator<T, [
+    ], Mos>) => UseBoundStore<Mutate<StoreApi<T>, Mos>>;
     /**
      * @deprecated Use `useStore` hook to bind store
      */

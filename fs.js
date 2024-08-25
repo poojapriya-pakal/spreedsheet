@@ -6,7 +6,9 @@ exports.FILE_SYSTEM_ADAPTER = {
     lstat: fs.lstat,
     stat: fs.stat,
     lstatSync: fs.lstatSync,
-    statSync: fs.statSync
+    statSync: fs.statSync,
+    readdir: fs.readdir,
+    readdirSync: fs.readdirSync
 };
 function createFileSystemAdapter(fsMethods) {
     if (fsMethods === undefined) {

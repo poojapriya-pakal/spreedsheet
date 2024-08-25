@@ -1,16 +1,20 @@
+import * as fsStat from '@nodelib/fs.stat';
 import * as fs from './adapters/fs';
 export interface Options {
-    followSymbolicLink?: boolean;
+    followSymbolicLinks?: boolean;
     fs?: Partial<fs.FileSystemAdapter>;
-    markSymbolicLink?: boolean;
+    pathSegmentSeparator?: string;
+    stats?: boolean;
     throwErrorOnBrokenSymbolicLink?: boolean;
 }
 export default class Settings {
     private readonly _options;
-    readonly followSymbolicLink: boolean;
+    readonly followSymbolicLinks: boolean;
     readonly fs: fs.FileSystemAdapter;
-    readonly markSymbolicLink: boolean;
+    readonly pathSegmentSeparator: string;
+    readonly stats: boolean;
     readonly throwErrorOnBrokenSymbolicLink: boolean;
+    readonly fsStatSettings: fsStat.Settings;
     constructor(_options?: Options);
     private _getValue;
 }

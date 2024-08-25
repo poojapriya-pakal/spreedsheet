@@ -38,11 +38,11 @@ const devtoolsImpl = (fn, devtoolsOptions = {}) => (set, get, api) => {
   const { enabled, anonymousActionType, store, ...options } = devtoolsOptions;
   let extensionConnector;
   try {
-    extensionConnector = (enabled != null ? enabled : process.env.NODE_ENV !== "production") && window.__REDUX_DEVTOOLS_EXTENSION__;
+    extensionConnector = (enabled != null ? enabled : (import.meta.env ? import.meta.env.MODE : void 0) !== "production") && window.__REDUX_DEVTOOLS_EXTENSION__;
   } catch (_e) {
   }
   if (!extensionConnector) {
-    if (process.env.NODE_ENV !== "production" && enabled) {
+    if ((import.meta.env ? import.meta.env.MODE : void 0) !== "production" && enabled) {
       console.warn(
         "[zustand devtools middleware] Please install/enable Redux devtools extension"
       );
@@ -95,7 +95,7 @@ const devtoolsImpl = (fn, devtoolsOptions = {}) => (set, get, api) => {
     let didWarnAboutReservedActionType = false;
     const originalDispatch = api.dispatch;
     api.dispatch = (...a) => {
-      if (process.env.NODE_ENV !== "production" && a[0].type === "__setState" && !didWarnAboutReservedActionType) {
+      if ((import.meta.env ? import.meta.env.MODE : void 0) !== "production" && a[0].type === "__setState" && !didWarnAboutReservedActionType) {
         console.warn(
           '[zustand devtools middleware] "__setState" action type is reserved to set state from the devtools. Avoid using it.'
         );
@@ -569,7 +569,7 @@ const newImpl = (config, baseOptions) => (set, get, api) => {
 };
 const persistImpl = (config, baseOptions) => {
   if ("getStorage" in baseOptions || "serialize" in baseOptions || "deserialize" in baseOptions) {
-    if (process.env.NODE_ENV !== "production") {
+    if ((import.meta.env ? import.meta.env.MODE : void 0) !== "production") {
       console.warn(
         "[DEPRECATED] `getStorage`, `serialize` and `deserialize` options are deprecated. Use `storage` option instead."
       );
