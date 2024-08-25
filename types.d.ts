@@ -1,99 +1,90 @@
-import type { SourceMapSegment } from './sourcemap-segment';
-import type { GREATEST_LOWER_BOUND, LEAST_UPPER_BOUND, TraceMap } from './trace-mapping';
-export interface SourceMapV3 {
-    file?: string | null;
-    names: string[];
-    sourceRoot?: string;
-    sources: (string | null)[];
-    sourcesContent?: (string | null)[];
-    version: 3;
-    ignoreList?: number[];
+import type { CreateNodeContext } from '../doc/createNode.js';
+import type { Node } from '../nodes/Node.js';
+import type { Scalar } from '../nodes/Scalar.js';
+import type { YAMLMap } from '../nodes/YAMLMap.js';
+import type { YAMLSeq } from '../nodes/YAMLSeq.js';
+import type { ParseOptions } from '../options.js';
+import type { StringifyContext } from '../stringify/stringify.js';
+import type { Schema } from './Schema.js';
+interface TagBase {
+    /**
+     * An optional factory function, used e.g. by collections when wrapping JS objects as AST nodes.
+     */
+    createNode?: (schema: Schema, value: unknown, ctx: CreateNodeContext) => Node;
+    /**
+     * If `true`, together with `test` allows for values to be stringified without
+     * an explicit tag. For most cases, it's unlikely that you'll actually want to
+     * use this, even if you first think you do.
+     */
+    default?: boolean;
+    /**
+     * If a tag has multiple forms that should be parsed and/or stringified
+     * differently, use `format` to identify them.
+     */
+    format?: string;
+    /**
+     * Used by `YAML.createNode` to detect your data type, e.g. using `typeof` or
+     * `instanceof`.
+     */
+    identify?: (value: unknown) => boolean;
+    /**
+     * The identifier for your data type, with which its stringified form will be
+     * prefixed. Should either be a !-prefixed local `!tag`, or a fully qualified
+     * `tag:domain,date:foo`.
+     */
+    tag: string;
 }
-export interface EncodedSourceMap extends SourceMapV3 {
-    mappings: string;
+export interface ScalarTag extends TagBase {
+    collection?: never;
+    nodeClass?: never;
+    /**
+     * Turns a value into an AST node.
+     * If returning a non-`Node` value, the output will be wrapped as a `Scalar`.
+     */
+    resolve(value: string, onError: (message: string) => void, options: ParseOptions): unknown;
+    /**
+     * Optional function stringifying a Scalar node. If your data includes a
+     * suitable `.toString()` method, you can probably leave this undefined and
+     * use the default stringifier.
+     *
+     * @param item The node being stringified.
+     * @param ctx Contains the stringifying context variables.
+     * @param onComment Callback to signal that the stringifier includes the
+     *   item's comment in its output.
+     * @param onChompKeep Callback to signal that the output uses a block scalar
+     *   type with the `+` chomping indicator.
+     */
+    stringify?: (item: Scalar, ctx: StringifyContext, onComment?: () => void, onChompKeep?: () => void) => string;
+    /**
+     * Together with `default` allows for values to be stringified without an
+     * explicit tag and detected using a regular expression. For most cases, it's
+     * unlikely that you'll actually want to use these, even if you first think
+     * you do.
+     */
+    test?: RegExp;
 }
-export interface DecodedSourceMap extends SourceMapV3 {
-    mappings: SourceMapSegment[][];
-}
-export interface Section {
-    offset: {
-        line: number;
-        column: number;
+export interface CollectionTag extends TagBase {
+    stringify?: never;
+    test?: never;
+    /** The source collection type supported by this tag. */
+    collection: 'map' | 'seq';
+    /**
+     * The `Node` child class that implements this tag.
+     * If set, used to select this tag when stringifying.
+     *
+     * If the class provides a static `from` method, then that
+     * will be used if the tag object doesn't have a `createNode` method.
+     */
+    nodeClass?: {
+        new (schema?: Schema): Node;
+        from?: (schema: Schema, obj: unknown, ctx: CreateNodeContext) => Node;
     };
-    map: EncodedSourceMap | DecodedSourceMap | SectionedSourceMap;
+    /**
+     * Turns a value into an AST node.
+     * If returning a non-`Node` value, the output will be wrapped as a `Scalar`.
+     *
+     * Note: this is required if nodeClass is not provided.
+     */
+    resolve?: (value: YAMLMap.Parsed | YAMLSeq.Parsed, onError: (message: string) => void, options: ParseOptions) => unknown;
 }
-export interface SectionedSourceMap {
-    file?: string | null;
-    sections: Section[];
-    version: 3;
-}
-export type OriginalMapping = {
-    source: string | null;
-    line: number;
-    column: number;
-    name: string | null;
-};
-export type InvalidOriginalMapping = {
-    source: null;
-    line: null;
-    column: null;
-    name: null;
-};
-export type GeneratedMapping = {
-    line: number;
-    column: number;
-};
-export type InvalidGeneratedMapping = {
-    line: null;
-    column: null;
-};
-export type Bias = typeof GREATEST_LOWER_BOUND | typeof LEAST_UPPER_BOUND;
-export type XInput = {
-    x_google_ignoreList?: SourceMapV3['ignoreList'];
-};
-export type EncodedSourceMapXInput = EncodedSourceMap & XInput;
-export type DecodedSourceMapXInput = DecodedSourceMap & XInput;
-export type SectionedSourceMapXInput = Omit<SectionedSourceMap, 'sections'> & {
-    sections: SectionXInput[];
-};
-export type SectionXInput = Omit<Section, 'map'> & {
-    map: SectionedSourceMapInput;
-};
-export type SourceMapInput = string | EncodedSourceMapXInput | DecodedSourceMapXInput | TraceMap;
-export type SectionedSourceMapInput = SourceMapInput | SectionedSourceMapXInput;
-export type Needle = {
-    line: number;
-    column: number;
-    bias?: Bias;
-};
-export type SourceNeedle = {
-    source: string;
-    line: number;
-    column: number;
-    bias?: Bias;
-};
-export type EachMapping = {
-    generatedLine: number;
-    generatedColumn: number;
-    source: null;
-    originalLine: null;
-    originalColumn: null;
-    name: null;
-} | {
-    generatedLine: number;
-    generatedColumn: number;
-    source: string | null;
-    originalLine: number;
-    originalColumn: number;
-    name: string | null;
-};
-export declare abstract class SourceMap {
-    version: SourceMapV3['version'];
-    file: SourceMapV3['file'];
-    names: SourceMapV3['names'];
-    sourceRoot: SourceMapV3['sourceRoot'];
-    sources: SourceMapV3['sources'];
-    sourcesContent: SourceMapV3['sourcesContent'];
-    resolvedSources: SourceMapV3['sources'];
-    ignoreList: SourceMapV3['ignoreList'];
-}
+export {};
