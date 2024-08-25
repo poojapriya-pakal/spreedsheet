@@ -1,19 +1,61 @@
-'use strict';
-
-function debug(logLevel, ...messages) {
-    if (logLevel === 'debug')
-        console.log(...messages);
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+function _export(target, all) {
+    for(var name in all)Object.defineProperty(target, name, {
+        enumerable: true,
+        get: all[name]
+    });
 }
-function warn(logLevel, warning) {
-    if (logLevel === 'debug' || logLevel === 'warn') {
-        // https://github.com/typescript-eslint/typescript-eslint/issues/7478
-        // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
-        if (typeof process !== 'undefined' && process.emitWarning)
-            process.emitWarning(warning);
-        else
-            console.warn(warning);
+_export(exports, {
+    dim: function() {
+        return dim;
+    },
+    default: function() {
+        return _default;
     }
+});
+const _picocolors = /*#__PURE__*/ _interop_require_default(require("picocolors"));
+function _interop_require_default(obj) {
+    return obj && obj.__esModule ? obj : {
+        default: obj
+    };
 }
-
-exports.debug = debug;
-exports.warn = warn;
+let alreadyShown = new Set();
+function log(type, messages, key) {
+    if (typeof process !== "undefined" && process.env.JEST_WORKER_ID) return;
+    if (key && alreadyShown.has(key)) return;
+    if (key) alreadyShown.add(key);
+    console.warn("");
+    messages.forEach((message)=>console.warn(type, "-", message));
+}
+function dim(input) {
+    return _picocolors.default.dim(input);
+}
+const _default = {
+    info (key, messages) {
+        log(_picocolors.default.bold(_picocolors.default.cyan("info")), ...Array.isArray(key) ? [
+            key
+        ] : [
+            messages,
+            key
+        ]);
+    },
+    warn (key, messages) {
+        log(_picocolors.default.bold(_picocolors.default.yellow("warn")), ...Array.isArray(key) ? [
+            key
+        ] : [
+            messages,
+            key
+        ]);
+    },
+    risk (key, messages) {
+        log(_picocolors.default.bold(_picocolors.default.magenta("risk")), ...Array.isArray(key) ? [
+            key
+        ] : [
+            messages,
+            key
+        ]);
+    }
+};
